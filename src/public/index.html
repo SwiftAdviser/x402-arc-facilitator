@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>x402 ARC Facilitator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0A0D12;
+    --surface: #1A2235;
+    --surface2: #0F1520;
+    --accent: #00E5CC;
+    --accent-dim: rgba(0,229,204,0.15);
+    --accent-border: rgba(0,229,204,0.3);
+    --orange: #FF6B35;
+    --orange-dim: rgba(255,107,53,0.15);
+    --text: #C8D8E8;
+    --text-dim: #6B7E96;
+    --text-bright: #E8F4FF;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'Inter', sans-serif;
+    --border: rgba(255,255,255,0.07);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2rem;
+    height: 56px;
+    background: rgba(10,13,18,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-logo {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 2rem;
+    list-style: none;
+  }
+
+  .nav-links a {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    text-decoration: none;
+    letter-spacing: 0.04em;
+    transition: color 0.2s;
+  }
+
+  .nav-links a:hover { color: var(--accent); }
+
+  .nav-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 6px var(--accent); }
+    50% { opacity: 0.6; box-shadow: 0 0 12px var(--accent); }
+  }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    padding: 80px 2rem 4rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-bg {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 70% 50%, rgba(0,229,204,0.06) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 60% at 20% 80%, rgba(255,107,53,0.04) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  /* Circuit grid lines */
+  .hero-bg::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,204,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,204,0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  .hero-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    align-items: center;
+  }
+
+  .hero-eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 1.25rem;
+    opacity: 0;
+    animation: fadeUp 0.6s ease 0.1s forwards;
+  }
+
+  .hero-title {
+    font-family: var(--mono);
+    font-size: clamp(2rem, 4vw, 3.25rem);
+    font-weight: 600;
+    line-height: 1.15;
+    color: var(--text-bright);
+    margin-bottom: 1.5rem;
+    opacity: 0;
+    animation: fadeUp 0.6s ease 0.25s forwards;
+  }
+
+  .hero-title span {
+    color: var(--accent);
+    position: relative;
+  }
+
+  .hero-subtitle {
+    font-size: 16px;
+    color: var(--text-dim);
+    line-height: 1.7;
+    margin-bottom: 2.5rem;
+    opacity: 0;
+    animation: fadeUp 0.6s ease 0.4s forwards;
+  }
+
+  .hero-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 2.5rem;
+    opacity: 0;
+    animation: fadeUp 0.6s ease 0.55s forwards;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    border: 1px solid;
+  }
+
+  .badge-teal {
+    background: var(--accent-dim);
+    border-color: var(--accent-border);
+    color: var(--accent);
+  }
+
+  .badge-orange {
+    background: var(--orange-dim);
+    border-color: rgba(255,107,53,0.3);
+    color: var(--orange);
+  }
+
+  .badge-muted {
+    background: rgba(255,255,255,0.04);
+    border-color: var(--border);
+    color: var(--text-dim);
+  }
+
+  .hero-cta {
+    display: flex;
+    gap: 1rem;
+    opacity: 0;
+    animation: fadeUp 0.6s ease 0.7s forwards;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1.5rem;
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0A0D12;
+  }
+
+  .btn-primary:hover {
+    background: #00ffec;
+    box-shadow: 0 0 20px rgba(0,229,204,0.3);
+  }
+
+  .btn-secondary {
+    background: transparent;
+    border-color: var(--accent-border);
+    color: var(--accent);
+  }
+
+  .btn-secondary:hover {
+    background: var(--accent-dim);
+  }
+
+  /* FLOW DIAGRAM */
+  .flow-panel {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    font-family: var(--mono);
+    font-size: 13px;
+    opacity: 0;
+    animation: fadeUp 0.6s ease 0.5s forwards;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .flow-panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+
+  .flow-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .flow-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot-red { background: #FF5F56; }
+  .dot-yellow { background: #FFBD2E; }
+  .dot-green { background: #27C93F; }
+
+  .flow-title-bar {
+    flex: 1;
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.06em;
+  }
+
+  #flow-diagram {
+    color: var(--text);
+    min-height: 180px;
+    line-height: 1.7;
+    white-space: pre;
+  }
+
+  .flow-accent { color: var(--accent); }
+  .flow-orange { color: var(--orange); }
+  .flow-dim { color: var(--text-dim); }
+  .flow-bright { color: var(--text-bright); font-weight: 600; }
+
+  .cursor {
+    display: inline-block;
+    width: 8px; height: 14px;
+    background: var(--accent);
+    animation: blink 1s step-end infinite;
+    vertical-align: middle;
+    margin-left: 2px;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  /* SECTIONS */
+  section {
+    padding: 5rem 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.75rem;
+  }
+
+  .section-title {
+    font-family: var(--mono);
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    font-weight: 600;
+    color: var(--text-bright);
+    margin-bottom: 0.75rem;
+  }
+
+  .section-desc {
+    color: var(--text-dim);
+    font-size: 15px;
+    margin-bottom: 3rem;
+    max-width: 600px;
+  }
+
+  /* NETWORK CARD */
+  .network-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+
+  .net-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .net-card:hover { border-color: var(--accent-border); }
+
+  .net-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.5;
+  }
+
+  .net-card-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+
+  .net-card-value {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text-bright);
+    word-break: break-all;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .copy-btn {
+    flex-shrink: 0;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 2px 8px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .copy-btn:hover {
+    border-color: var(--accent-border);
+    color: var(--accent);
+  }
+
+  .copy-btn.copied {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* TABS */
+  .tabs {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--surface2);
+  }
+
+  .tab-nav {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+
+  .tab-btn {
+    padding: 0.8rem 1.5rem;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-dim);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .tab-btn:hover { color: var(--text); }
+
+  .tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .tab-content { display: none; padding: 1.5rem; }
+  .tab-content.active { display: block; }
+
+  /* CODE BLOCKS */
+  .code-block {
+    background: #060810;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1.25rem 1.5rem;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.75;
+    overflow-x: auto;
+    position: relative;
+    margin: 1rem 0;
+  }
+
+  .code-block::before {
+    content: attr(data-lang);
+    position: absolute;
+    top: 0.5rem; right: 0.75rem;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+  }
+
+  .code-block .kw { color: #79B8FF; }
+  .code-block .str { color: #9ECBFF; }
+  .code-block .fn { color: var(--accent); }
+  .code-block .cm { color: #6B7E96; font-style: italic; }
+  .code-block .num { color: var(--orange); }
+  .code-block .prop { color: #FDBC7A; }
+
+  .tab-desc {
+    color: var(--text-dim);
+    font-size: 14px;
+    margin-bottom: 1rem;
+    line-height: 1.6;
+  }
+
+  /* API REFERENCE */
+  .api-endpoint {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .api-endpoint:hover { border-color: var(--accent-border); }
+
+  .api-endpoint-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .method {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 0.25rem 0.6rem;
+    border-radius: 3px;
+    letter-spacing: 0.08em;
+  }
+
+  .method-get {
+    background: rgba(0,229,204,0.15);
+    color: var(--accent);
+    border: 1px solid var(--accent-border);
+  }
+
+  .method-post {
+    background: var(--orange-dim);
+    color: var(--orange);
+    border: 1px solid rgba(255,107,53,0.3);
+  }
+
+  .endpoint-path {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--text-bright);
+    font-weight: 500;
+  }
+
+  .endpoint-desc {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-left: auto;
+  }
+
+  .api-endpoint-body {
+    padding: 0 1.5rem 1.5rem;
+    display: none;
+  }
+
+  .api-endpoint.open .api-endpoint-body { display: block; }
+
+  .schema-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  /* ERROR TABLE */
+  .err-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+
+  .err-table th {
+    text-align: left;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .err-table td {
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    vertical-align: top;
+  }
+
+  .err-table tr:last-child td { border-bottom: none; }
+
+  .err-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .err-code {
+    color: var(--orange);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .err-cause { color: var(--text-dim); font-size: 12px; }
+
+  /* LINKS SECTION */
+  .links-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1rem;
+  }
+
+  .link-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+
+  .link-card:hover {
+    border-color: var(--accent-border);
+    background: var(--surface);
+    transform: translateY(-2px);
+  }
+
+  .link-icon {
+    width: 36px; height: 36px;
+    border-radius: 6px;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 16px;
+  }
+
+  .link-card-title {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-bright);
+    margin-bottom: 0.3rem;
+  }
+
+  .link-card-desc {
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  /* FOOTER */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 2rem;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+  }
+
+  footer a { color: var(--accent); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  /* ANIMATIONS */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .fade-in {
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+
+  .fade-in.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .hero-content { grid-template-columns: 1fr; }
+    .flow-panel { display: none; }
+    nav { padding: 0 1rem; }
+    .nav-links { display: none; }
+    section { padding: 3rem 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">x402 // ARC</div>
+  <ul class="nav-links">
+    <li><a href="#network">Network</a></li>
+    <li><a href="#quickstart">Quick Start</a></li>
+    <li><a href="#api">API</a></li>
+    <li><a href="#errors">Errors</a></li>
+    <li><a href="#links">Links</a></li>
+  </ul>
+  <div class="nav-status">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">checking...</span>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-content">
+    <div>
+      <div class="hero-eyebrow">x402 Protocol // Circle Gateway</div>
+      <h1 class="hero-title">ARC Testnet<br><span>Facilitator</span></h1>
+      <p class="hero-subtitle">
+        Open facilitator for the x402 HTTP payment protocol on ARC Testnet.
+        Drop-in middleware for any Express app — charge per request in USDC.
+      </p>
+      <div class="hero-badges">
+        <span class="badge badge-teal">● eip155:5042002</span>
+        <span class="badge badge-orange">USDC / ARC Testnet</span>
+        <span class="badge badge-muted">Circle Gateway SDK</span>
+        <span class="badge badge-muted">x402 spec v2</span>
+      </div>
+      <div class="hero-cta">
+        <a href="#quickstart" class="btn btn-primary">Quick Start →</a>
+        <a href="#api" class="btn btn-secondary">API Reference</a>
+      </div>
+    </div>
+
+    <div class="flow-panel">
+      <div class="flow-header">
+        <div class="flow-dot dot-red"></div>
+        <div class="flow-dot dot-yellow"></div>
+        <div class="flow-dot dot-green"></div>
+        <div class="flow-title-bar">payment-flow.diagram</div>
+      </div>
+      <div id="flow-diagram"></div>
+    </div>
+  </div>
+</div>
+
+<!-- NETWORK -->
+<section id="network">
+  <div class="section-label fade-in">Network Details</div>
+  <h2 class="section-title fade-in">ARC Testnet Configuration</h2>
+  <p class="section-desc fade-in">Use these values when configuring sellers or buyers on the ARC testnet.</p>
+  <div class="network-grid">
+    <div class="net-card fade-in">
+      <div class="net-card-label">Facilitator URL</div>
+      <div class="net-card-value">
+        <span>https://x402-arc.krutovoy.me</span>
+        <button class="copy-btn" onclick="copy(this,'https://x402-arc.krutovoy.me')">copy</button>
+      </div>
+    </div>
+    <div class="net-card fade-in">
+      <div class="net-card-label">Network ID</div>
+      <div class="net-card-value">
+        <span>eip155:5042002</span>
+        <button class="copy-btn" onclick="copy(this,'eip155:5042002')">copy</button>
+      </div>
+    </div>
+    <div class="net-card fade-in">
+      <div class="net-card-label">Chain ID</div>
+      <div class="net-card-value">
+        <span>5042002</span>
+        <button class="copy-btn" onclick="copy(this,'5042002')">copy</button>
+      </div>
+    </div>
+    <div class="net-card fade-in">
+      <div class="net-card-label">USDC Contract</div>
+      <div class="net-card-value">
+        <span style="font-size:11px">0x3600000000000000000000000000000000000000</span>
+        <button class="copy-btn" onclick="copy(this,'0x3600000000000000000000000000000000000000')">copy</button>
+      </div>
+    </div>
+    <div class="net-card fade-in">
+      <div class="net-card-label">GatewayWallet Contract</div>
+      <div class="net-card-value">
+        <span style="font-size:11px">0x0077777d7eba4688bdef3e311b846f25870a19b9</span>
+        <button class="copy-btn" onclick="copy(this,'0x0077777d7eba4688bdef3e311b846f25870a19b9')">copy</button>
+      </div>
+    </div>
+    <div class="net-card fade-in">
+      <div class="net-card-label">RPC Endpoint</div>
+      <div class="net-card-value">
+        <span style="font-size:11px">https://rpc.testnet.arc.network</span>
+        <button class="copy-btn" onclick="copy(this,'https://rpc.testnet.arc.network')">copy</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- QUICK START -->
+<section id="quickstart">
+  <div class="section-label fade-in">Integration</div>
+  <h2 class="section-title fade-in">Quick Start</h2>
+  <p class="section-desc fade-in">Three paths to integrate x402 payments.</p>
+
+  <div class="tabs fade-in">
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="switchTab(event,'ts-seller')">TypeScript — Seller</button>
+      <button class="tab-btn" onclick="switchTab(event,'ts-buyer')">TypeScript — Buyer</button>
+      <button class="tab-btn" onclick="switchTab(event,'curl')">Raw curl</button>
+    </div>
+
+    <div class="tab-content active" id="tab-ts-seller">
+      <p class="tab-desc">Add payment-gated endpoints to any Express app using Circle's Gateway SDK.</p>
+      <div class="code-block" data-lang="typescript">
+<span class="kw">import</span> { createGatewayMiddleware } <span class="kw">from</span> <span class="str">'@circlefin/x402-batching/server'</span>;
+<span class="kw">import</span> express <span class="kw">from</span> <span class="str">'express'</span>;
+
+<span class="kw">const</span> app = <span class="fn">express</span>();
+
+<span class="cm">// Initialize with your wallet + this facilitator</span>
+<span class="kw">const</span> gateway = <span class="fn">createGatewayMiddleware</span>({
+  sellerAddress: <span class="str">'0xYOUR_WALLET_ADDRESS'</span>,
+  facilitatorUrl: <span class="str">'https://x402-arc.krutovoy.me'</span>,
+});
+
+<span class="cm">// Charge $0.001 USDC per request</span>
+app.<span class="fn">get</span>(<span class="str">'/api/data'</span>, gateway.<span class="fn">require</span>(<span class="str">'$0.001'</span>), (req, res) =&gt; {
+  res.<span class="fn">json</span>({
+    data: <span class="str">'paid content'</span>,
+    payer: req.payment.payer,
+  });
+});
+
+app.<span class="fn">listen</span>(<span class="num">3000</span>);
+      </div>
+      <p class="tab-desc" style="margin-top:1.5rem;font-size:13px;">
+        Install: <code style="color:var(--accent)">npm install @circlefin/x402-batching express</code><br>
+        The SDK handles 402 response, payment verification, and settlement automatically.
+      </p>
+    </div>
+
+    <div class="tab-content" id="tab-ts-buyer">
+      <p class="tab-desc">Pay x402-protected endpoints using the Gateway client. One-time USDC deposit, then pay any endpoint.</p>
+      <div class="code-block" data-lang="typescript">
+<span class="kw">import</span> { GatewayClient } <span class="kw">from</span> <span class="str">'@circlefin/x402-batching/client'</span>;
+
+<span class="cm">// Initialize with your private key on ARC testnet</span>
+<span class="kw">const</span> client = <span class="kw">new</span> <span class="fn">GatewayClient</span>({
+  chain: <span class="str">'arcTestnet'</span>,
+  privateKey: <span class="str">'0xYOUR_PRIVATE_KEY'</span>,
+});
+
+<span class="cm">// One-time setup: deposit USDC to Gateway contract</span>
+<span class="kw">await</span> client.<span class="fn">deposit</span>(<span class="str">'1'</span>); <span class="cm">// 1 USDC</span>
+
+<span class="cm">// Pay and fetch any x402-protected endpoint</span>
+<span class="kw">const</span> { data } = <span class="kw">await</span> client.<span class="fn">pay</span>(<span class="str">'https://your-api.com/api/data'</span>);
+<span class="fn">console</span>.<span class="fn">log</span>(data); <span class="cm">// { data: 'paid content', payer: '0x...' }</span>
+      </div>
+      <p class="tab-desc" style="margin-top:1.5rem;font-size:13px;">
+        Get testnet USDC from the <a href="https://faucet.circle.com" target="_blank" style="color:var(--accent)">Circle Faucet</a> → select Arc Testnet.
+      </p>
+    </div>
+
+    <div class="tab-content" id="tab-curl">
+      <p class="tab-desc">Test the facilitator directly with curl. Useful for debugging or building custom clients.</p>
+
+      <div class="schema-label">1. Check supported networks</div>
+      <div class="code-block" data-lang="bash">
+curl https://x402-arc.krutovoy.me/supported | jq .
+      </div>
+
+      <div class="schema-label">2. Health check</div>
+      <div class="code-block" data-lang="bash">
+curl https://x402-arc.krutovoy.me/health | jq .
+<span class="cm"># → { "status": "ok", "uptime": 3600, "networks": 12 }</span>
+      </div>
+
+      <div class="schema-label">3. Verify a payment payload</div>
+      <div class="code-block" data-lang="bash">
+curl -X POST https://x402-arc.krutovoy.me/verify \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d <span class="str">'{
+    "paymentPayload": { ... },
+    "paymentRequirements": {
+      "network": "eip155:5042002",
+      "asset": "0x3600000000000000000000000000000000000000",
+      "payTo": "0xYOUR_WALLET",
+      "amount": "1000"
+    }
+  }'</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- API REFERENCE -->
+<section id="api">
+  <div class="section-label fade-in">Reference</div>
+  <h2 class="section-title fade-in">API Endpoints</h2>
+  <p class="section-desc fade-in">All endpoints are public — no authentication required. Click to expand.</p>
+
+  <div class="fade-in">
+    <div class="api-endpoint" onclick="toggleEndpoint(this)">
+      <div class="api-endpoint-header">
+        <span class="method method-get">GET</span>
+        <span class="endpoint-path">/supported</span>
+        <span class="endpoint-desc">Supported payment networks</span>
+      </div>
+      <div class="api-endpoint-body">
+        <p class="tab-desc">Returns list of supported payment networks and their configurations.</p>
+        <div class="schema-label">Response</div>
+        <div class="code-block" data-lang="json">
+{
+  <span class="prop">"kinds"</span>: [
+    {
+      <span class="prop">"network"</span>: <span class="str">"eip155:5042002"</span>,
+      <span class="prop">"asset"</span>: <span class="str">"0x3600000000000000000000000000000000000000"</span>,
+      <span class="prop">"scheme"</span>: <span class="str">"gateway"</span>
+    },
+    <span class="cm">// ... 11 more networks</span>
+  ]
+}
+        </div>
+      </div>
+    </div>
+
+    <div class="api-endpoint" onclick="toggleEndpoint(this)">
+      <div class="api-endpoint-header">
+        <span class="method method-get">GET</span>
+        <span class="endpoint-path">/health</span>
+        <span class="endpoint-desc">Liveness probe</span>
+      </div>
+      <div class="api-endpoint-body">
+        <p class="tab-desc">Returns facilitator status, uptime, and network count. Use for monitoring.</p>
+        <div class="schema-label">Response</div>
+        <div class="code-block" data-lang="json">
+{
+  <span class="prop">"status"</span>: <span class="str">"ok"</span>,
+  <span class="prop">"uptime"</span>: <span class="num">3600</span>,
+  <span class="prop">"networks"</span>: <span class="num">12</span>,
+  <span class="prop">"version"</span>: <span class="str">"1.0.0"</span>
+}
+        </div>
+      </div>
+    </div>
+
+    <div class="api-endpoint" onclick="toggleEndpoint(this)">
+      <div class="api-endpoint-header">
+        <span class="method method-post">POST</span>
+        <span class="endpoint-path">/verify</span>
+        <span class="endpoint-desc">Verify payment payload</span>
+      </div>
+      <div class="api-endpoint-body">
+        <p class="tab-desc">Validates a payment payload against the Circle Gateway. Called by seller middleware before granting access.</p>
+        <div class="schema-label">Request body</div>
+        <div class="code-block" data-lang="json">
+{
+  <span class="prop">"paymentPayload"</span>: { <span class="cm">/* x402 payment header, base64-decoded */</span> },
+  <span class="prop">"paymentRequirements"</span>: {
+    <span class="prop">"network"</span>: <span class="str">"eip155:5042002"</span>,
+    <span class="prop">"asset"</span>: <span class="str">"0x3600000000000000000000000000000000000000"</span>,
+    <span class="prop">"payTo"</span>: <span class="str">"0xSELLER_ADDRESS"</span>,
+    <span class="prop">"amount"</span>: <span class="str">"1000"</span> <span class="cm">// in base units (6 decimals for USDC)</span>
+  }
+}
+        </div>
+        <div class="schema-label">Response</div>
+        <div class="code-block" data-lang="json">
+{
+  <span class="prop">"isValid"</span>: <span class="kw">true</span>,
+  <span class="prop">"payer"</span>: <span class="str">"0xBUYER_ADDRESS"</span>,
+  <span class="prop">"invalidReason"</span>: <span class="kw">null</span>
+}
+        </div>
+      </div>
+    </div>
+
+    <div class="api-endpoint" onclick="toggleEndpoint(this)">
+      <div class="api-endpoint-header">
+        <span class="method method-post">POST</span>
+        <span class="endpoint-path">/settle</span>
+        <span class="endpoint-desc">Settle verified payment</span>
+      </div>
+      <div class="api-endpoint-body">
+        <p class="tab-desc">Executes the on-chain settlement after successful verification. Called by seller middleware after responding to buyer.</p>
+        <div class="schema-label">Request body</div>
+        <div class="code-block" data-lang="json">
+{
+  <span class="prop">"paymentPayload"</span>: { <span class="cm">/* same payload from /verify */</span> },
+  <span class="prop">"paymentRequirements"</span>: { <span class="cm">/* same requirements from /verify */</span> }
+}
+        </div>
+        <div class="schema-label">Response</div>
+        <div class="code-block" data-lang="json">
+{
+  <span class="prop">"success"</span>: <span class="kw">true</span>,
+  <span class="prop">"payer"</span>: <span class="str">"0xBUYER_ADDRESS"</span>,
+  <span class="prop">"txHash"</span>: <span class="str">"0x..."</span>,
+  <span class="prop">"errorReason"</span>: <span class="kw">null</span>
+}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ERRORS -->
+<section id="errors">
+  <div class="section-label fade-in">Troubleshooting</div>
+  <h2 class="section-title fade-in">Common Errors</h2>
+  <p class="section-desc fade-in">Most issues are due to insufficient balance or incorrect network configuration.</p>
+  <div class="fade-in" style="background:var(--surface); border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+    <table class="err-table">
+      <thead>
+        <tr>
+          <th>Error</th>
+          <th>Cause</th>
+          <th>Fix</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="err-code">isValid: false</span></td>
+          <td class="err-cause">Payment payload invalid or expired</td>
+          <td>Retry — payloads expire in ~30s</td>
+        </tr>
+        <tr>
+          <td><span class="err-code">insufficient balance</span></td>
+          <td class="err-cause">Buyer has no USDC in GatewayWallet</td>
+          <td>Get testnet USDC from Circle Faucet, then deposit</td>
+        </tr>
+        <tr>
+          <td><span class="err-code">network mismatch</span></td>
+          <td class="err-cause">paymentRequirements.network wrong</td>
+          <td>Use <code>eip155:5042002</code> for ARC testnet</td>
+        </tr>
+        <tr>
+          <td><span class="err-code">unsupported network</span></td>
+          <td class="err-cause">Network not in /supported list</td>
+          <td>Check /supported — use exact network string</td>
+        </tr>
+        <tr>
+          <td><span class="err-code">500 Internal Error</span></td>
+          <td class="err-cause">RPC or Gateway SDK error</td>
+          <td>Check /health, retry in 5s</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- LINKS -->
+<section id="links">
+  <div class="section-label fade-in">Resources</div>
+  <h2 class="section-title fade-in">External Links</h2>
+  <p class="section-desc fade-in">Everything you need to build on x402 + ARC.</p>
+  <div class="links-grid">
+    <a href="https://faucet.circle.com" target="_blank" class="link-card fade-in">
+      <div class="link-icon">⛽</div>
+      <div>
+        <div class="link-card-title">Circle Faucet</div>
+        <div class="link-card-desc">Get free testnet USDC → select Arc Testnet</div>
+      </div>
+    </a>
+    <a href="https://testnet.arcscan.app" target="_blank" class="link-card fade-in">
+      <div class="link-icon">🔍</div>
+      <div>
+        <div class="link-card-title">ARC Explorer</div>
+        <div class="link-card-desc">View transactions on ARC Testnet</div>
+      </div>
+    </a>
+    <a href="https://github.com/SwiftAdviser/x402-arc-facilitator" target="_blank" class="link-card fade-in">
+      <div class="link-icon">⚡</div>
+      <div>
+        <div class="link-card-title">GitHub Repo</div>
+        <div class="link-card-desc">Source code for this facilitator</div>
+      </div>
+    </a>
+    <a href="https://www.circle.com/en/developers" target="_blank" class="link-card fade-in">
+      <div class="link-icon">○</div>
+      <div>
+        <div class="link-card-title">Circle Developers</div>
+        <div class="link-card-desc">Circle Gateway SDK documentation</div>
+      </div>
+    </a>
+    <a href="https://rpc.testnet.arc.network" target="_blank" class="link-card fade-in">
+      <div class="link-icon">◈</div>
+      <div>
+        <div class="link-card-title">ARC RPC</div>
+        <div class="link-card-desc">https://rpc.testnet.arc.network</div>
+      </div>
+    </a>
+    <a href="https://x402-arc.krutovoy.me/supported" target="_blank" class="link-card fade-in">
+      <div class="link-icon">✓</div>
+      <div>
+        <div class="link-card-title">/supported JSON</div>
+        <div class="link-card-desc">Live supported networks response</div>
+      </div>
+    </a>
+    <a href="/llms.txt" target="_blank" class="link-card fade-in">
+      <div class="link-icon">🤖</div>
+      <div>
+        <div class="link-card-title">llms.txt</div>
+        <div class="link-card-desc">AI-readable integration guide for agents</div>
+      </div>
+    </a>
+  </div>
+</section>
+
+<footer>
+  <p>
+    x402 ARC Facilitator — Circle Gateway ·
+    <a href="/health">/health</a> ·
+    <a href="/supported">/supported</a> ·
+    <a href="/llms.txt">llms.txt</a> ·
+    <a href="https://github.com/SwiftAdviser/x402-arc-facilitator">GitHub</a>
+  </p>
+</footer>
+
+<script>
+// ---- FLOW DIAGRAM TYPING ANIMATION ----
+const lines = [
+  { text: '  BUYER', class: 'flow-bright' },
+  { text: '    │', class: 'flow-dim' },
+  { text: '    │  X-PAYMENT header', class: 'flow-dim' },
+  { text: '    ▼', class: 'flow-dim' },
+  { text: '  SELLER (your API)', class: 'flow-bright' },
+  { text: '    │', class: 'flow-dim' },
+  { text: '    ├─ POST /verify ──────►', class: 'flow-accent' },
+  { text: '    │                      ARC FACILITATOR', class: 'flow-bright' },
+  { text: '    │  ◄── { isValid } ────┤', class: 'flow-accent' },
+  { text: '    │                      │  Circle Gateway', class: 'flow-dim' },
+  { text: '    │  ← 200 response      ├─────────────────►', class: 'flow-orange' },
+  { text: '    │                      │  ARC Chain', class: 'flow-dim' },
+  { text: '    └─ POST /settle ──────►│', class: 'flow-accent' },
+  { text: '                           └─ txHash ✓', class: 'flow-accent' },
+];
+
+let lineIdx = 0, charIdx = 0;
+const el = document.getElementById('flow-diagram');
+
+function typeLine() {
+  if (lineIdx >= lines.length) {
+    el.innerHTML += '<span class="cursor"></span>';
+    return;
+  }
+  const line = lines[lineIdx];
+  const text = line.text;
+  if (charIdx === 0) {
+    el.innerHTML += `<span class="${line.class}">`;
+  }
+  if (charIdx < text.length) {
+    el.innerHTML = el.innerHTML.replace(/<\/span>$/, '') + text[charIdx] + '</span>';
+    charIdx++;
+    setTimeout(typeLine, 18);
+  } else {
+    el.innerHTML += '\n';
+    lineIdx++; charIdx = 0;
+    setTimeout(typeLine, 30);
+  }
+}
+
+setTimeout(typeLine, 800);
+
+// ---- TABS ----
+function switchTab(e, id) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  e.target.classList.add('active');
+  document.getElementById('tab-' + id).classList.add('active');
+}
+
+// ---- ACCORDION ----
+function toggleEndpoint(el) {
+  el.classList.toggle('open');
+}
+
+// ---- COPY ----
+function copy(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+// ---- INTERSECTION OBSERVER (fade-in) ----
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((e, i) => {
+    if (e.isIntersecting) {
+      setTimeout(() => e.target.classList.add('visible'), i * 80);
+      observer.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+// ---- HEALTH CHECK ----
+async function checkHealth() {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  try {
+    const r = await fetch('/health');
+    const d = await r.json();
+    if (d.status === 'ok') {
+      dot.style.background = 'var(--accent)';
+      dot.style.boxShadow = '0 0 6px var(--accent)';
+      txt.textContent = `online · ${d.networks} networks`;
+    }
+  } catch {
+    dot.style.background = 'var(--orange)';
+    dot.style.boxShadow = '0 0 6px var(--orange)';
+    txt.textContent = 'offline';
+  }
+}
+
+checkHealth();
+setInterval(checkHealth, 30000);
+</script>
+</body>
+</html>

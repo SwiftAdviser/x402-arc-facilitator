@@ -1,0 +1,202 @@
+# x402 ARC Facilitator — AI Integration Guide
+
+> Full docs: https://x402-arc.krutovoy.me
+> This file: https://x402-arc.krutovoy.me/llms.txt
+
+This is an open x402 payment protocol facilitator running Circle's Gateway SDK on ARC Testnet.
+It enables HTTP micropayments: sellers charge per-request in USDC, buyers pay with a signed GatewayWallet header.
+
+---
+
+## Facilitator
+
+URL: https://x402-arc.krutovoy.me
+Protocol: x402 (HTTP 402 Payment Required)
+Auth required: none — all endpoints are public
+
+---
+
+## Network Details
+
+| Key              | Value                                        |
+|------------------|----------------------------------------------|
+| Network ID       | eip155:5042002                               |
+| Chain ID         | 5042002                                      |
+| Chain Name       | ARC Testnet                                  |
+| USDC Contract    | 0x3600000000000000000000000000000000000000   |
+| GatewayWallet    | 0x0077777d7eba4688bdef3e311b846f25870a19b9   |
+| RPC              | https://rpc.testnet.arc.network              |
+| Explorer         | https://testnet.arcscan.app                  |
+| Faucet           | https://faucet.circle.com (select Arc Testnet) |
+
+---
+
+## API Endpoints
+
+### GET /supported
+Returns supported payment networks and their configurations.
+
+Response:
+```json
+{
+  "kinds": [
+    {
+      "network": "eip155:5042002",
+      "asset": "0x3600000000000000000000000000000000000000",
+      "scheme": "gateway"
+    }
+  ]
+}
+```
+
+### GET /health
+Liveness probe. Use for monitoring.
+
+Response:
+```json
+{
+  "status": "ok",
+  "uptime": 3600,
+  "networks": 12,
+  "version": "1.0.0"
+}
+```
+
+### POST /verify
+Validates a payment payload against Circle Gateway.
+Called automatically by seller middleware before granting access.
+
+Request:
+```json
+{
+  "paymentPayload": { "...": "..." },
+  "paymentRequirements": {
+    "network": "eip155:5042002",
+    "asset": "0x3600000000000000000000000000000000000000",
+    "payTo": "0xSELLER_ADDRESS",
+    "amount": "1000"
+  }
+}
+```
+
+Response:
+```json
+{
+  "isValid": true,
+  "payer": "0xBUYER_ADDRESS",
+  "invalidReason": null
+}
+```
+
+### POST /settle
+Executes on-chain settlement after successful /verify.
+Called automatically by seller middleware after responding to buyer.
+
+Request: same shape as /verify
+Response:
+```json
+{
+  "success": true,
+  "payer": "0xBUYER_ADDRESS",
+  "txHash": "0x...",
+  "errorReason": null
+}
+```
+
+---
+
+## Seller Integration (TypeScript)
+
+```typescript
+import { createGatewayMiddleware } from '@circlefin/x402-batching/server';
+import express from 'express';
+
+const app = express();
+
+const gateway = createGatewayMiddleware({
+  sellerAddress: '0xYOUR_WALLET_ADDRESS',
+  facilitatorUrl: 'https://x402-arc.krutovoy.me',
+});
+
+// Charge $0.001 USDC per request
+app.get('/api/data', gateway.require('$0.001'), (req, res) => {
+  res.json({
+    data: 'paid content',
+    payer: req.payment.payer,
+  });
+});
+
+app.listen(3000);
+```
+
+Install: `npm install @circlefin/x402-batching express`
+
+The SDK handles:
+1. Returning HTTP 402 with payment requirements to unpaid requests
+2. Calling /verify on the facilitator to validate payment headers
+3. Serving the response to the buyer
+4. Calling /settle asynchronously
+
+---
+
+## Buyer Integration (TypeScript)
+
+```typescript
+import { GatewayClient } from '@circlefin/x402-batching/client';
+
+const client = new GatewayClient({
+  chain: 'arcTestnet',
+  privateKey: '0xYOUR_PRIVATE_KEY',
+});
+
+// One-time: deposit USDC to Gateway contract
+await client.deposit('1'); // 1 USDC
+
+// Pay and fetch any x402-protected endpoint
+const { data } = await client.pay('https://your-api.com/api/data');
+```
+
+Get testnet USDC: https://faucet.circle.com → select Arc Testnet
+
+---
+
+## Payment Flow
+
+```
+BUYER
+  │
+  │  (1) GET /api/data  → 402 Payment Required
+  ▼
+SELLER API (your Express app)
+  │
+  ├─ (2) POST /verify ──────► ARC FACILITATOR
+  │                            │  Circle Gateway SDK
+  │  ◄── { isValid: true } ───┤  validates signature
+  │                            │  + GatewayWallet balance
+  │  ← (3) 200 + data         │
+  │                            │
+  └─ (4) POST /settle ────────► triggers on-chain transfer
+                                └─ txHash ✓
+```
+
+---
+
+## Common Errors
+
+| Error              | Cause                            | Fix                                    |
+|--------------------|----------------------------------|----------------------------------------|
+| isValid: false     | Payload invalid or expired (~30s) | Retry request                         |
+| insufficient balance | Buyer has no USDC in Gateway   | Deposit USDC first via client.deposit() |
+| network mismatch   | Wrong network in requirements    | Use eip155:5042002                     |
+| unsupported network | Network not in /supported       | Check /supported response              |
+| 500 error          | RPC or Gateway SDK issue         | Check /health, retry in 5s            |
+
+---
+
+## Notes for AI Agents
+
+- The facilitator is stateless — no API keys, no auth required to call /verify or /settle
+- CORS: Access-Control-Allow-Origin: * — safe to call from browser dApps
+- The `amount` field in paymentRequirements is in USDC base units (6 decimals): $0.001 = "1000"
+- The SDK package `@circlefin/x402-batching` is from Circle's private registry (Cloudsmith)
+- For production use, run your own facilitator or contact Circle for access

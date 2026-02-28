@@ -44,7 +44,23 @@ async function logRequest(opts: {
 const app = express();
 app.use(express.json());
 
-app.get('/', (_, res) => res.send('x402 ARC Facilitator — Circle Gateway'));
+app.use((_, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  next();
+});
+
+const startTime = Date.now();
+app.get('/health', (_, res) => res.json({
+  status: 'ok',
+  uptime: Math.floor((Date.now() - startTime) / 1000),
+  networks: supported.kinds.length,
+  version: '1.0.0',
+}));
+
+// Serve landing page, llms.txt, and other static files from public/
+app.use(express.static(new URL('../public', import.meta.url).pathname));
 
 // Official x402 protocol endpoints — public, no auth required
 app.get('/supported', (_, res) => res.json(supported));
